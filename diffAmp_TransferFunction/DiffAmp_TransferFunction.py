@@ -37,10 +37,11 @@ class diffAMP(unittest.TestCase):
         options = Options()
         options.add_argument("--headless=new")
         self.driver = webdriver.Chrome(options=options) 
-        with open(r'DiffAmp_TransferFunction.json') as d:
-            self.testData = json.load(d)['Nimble'][0]
+
         
     def test_export(self):
+        with open(r'DiffAmp_TransferFunction.json') as d:
+            self.testData = json.load(d)['Nimble'][0]
         my_functions = functions() 
         device = self.testData['device']
         project_path = self.testData['project_location']
@@ -55,6 +56,10 @@ class diffAMP(unittest.TestCase):
         my_functions.create_excel_file(results_folder, results_file)
 
         for dictionary in dictionaries:
+            chromedriver_autoinstaller.install()
+            options = Options()
+            options.add_argument("--headless=new")
+            self.driver = webdriver.Chrome(options=options) 
         
             driver = self.driver
             driver.maximize_window()
@@ -377,87 +382,17 @@ class diffAMP(unittest.TestCase):
             
             workbook.save(results_file)
             
+            #Calling the function to copy ranges within excel
             my_functions.copy_ranges_within_excel(results_file, result_sheet, score_sheet, 5, 6, 3, 4, offset_source_sheet=1, offset_target_sheet=2)
 
-            #This fuction applies the formulas to create the score for Nimble and LTspice
-            def apply_formulas(workbook, sheet1_name, sheet2_name):
-                wb = openpyxl.load_workbook(workbook)
-
-                sheet1 = wb[sheet1_name]
-                sheet2 = wb[sheet2_name]
-
-                # Iterate through cells E3:E56 and F3:F56 in sheet1 and apply the formulas
-                for row in range(3, 57):
-                    cell_e = sheet1.cell(row=row, column=5)  # Column 5 corresponds to 'E' =MATCH(C3,'G2'!$A$2:$A$432,1)
-                    cell_e.value = f'=MATCH(C{row}, {sheet2_name}!$A$2:$A$432, 1)'
-                    cell_f = sheet1.cell(row=row, column=6)  # Column 6 corresponds to 'F' =INDEX('G2'!$A$2:$A$432,'G2 Score'!E3)
-                    cell_f.value = f'=INDEX({sheet2_name}!$A$2:$A$432, E{row})'             
-                    cell_g = sheet1.cell(row=row, column=7)  # Column 7 corresponds to 'G' =INDEX('G2'!$A$2:$A$432,'G2 Score'!E3+1)
-                    cell_g.value = f'=INDEX({sheet2_name}!$A$2:$A$432, E{row}+1)'              
-                    cell_h = sheet1.cell(row=row, column=8)  # Column 8 corresponds to 'H' =INDEX('G2'!$B$2:$B$432,'G2 Score'!E3)
-                    cell_h.value = f'=INDEX({sheet2_name}!$B$2:$B$432, E{row})'               
-                    cell_i = sheet1.cell(row=row, column=9)  # Column 9 corresponds to 'I' =INDEX('G2'!$B$2:$B$432,'G2 Score'!E3+1)
-                    cell_i.value = f'=INDEX({sheet2_name}!$B$2:$B$432, E{row}+1)'               
-                    cell_j = sheet1.cell(row=row, column=10)  # Column 10 corresponds to 'J' =SLOPE(H3:I3,F3:G3)*(C3-F3)+H3
-                    cell_j.value = f'=SLOPE(H{row}:I{row}, F{row}:G{row})*(C{row}-F{row})+H{row}'             
-                    cell_k = sheet1.cell(row=row, column=11)  # Column 11 corresponds to 'K' =ABS(J3-D3)
-                    cell_k.value = f'=ABS(J{row}-D{row})'
-                    
-                cell_l3 = sheet1.cell(row=3, column=12)  # Column 12 corresponds to 'L' =AVERAGE(K3:K46)
-                cell_l3.value = '=AVERAGE(K3:K52)'
-                cell_l3.font = Font(bold=True)
-                
-                # Formulas for LTSpice scoring
-                for row in range(3, 57):
-                    cell_m = sheet1.cell(row=row, column=13)  # Column 5 corresponds to 'M' =MATCH(C3,'G2'!$A$2:$A$432,1)
-                    cell_m.value = f'=MATCH(C{row}, {sheet2_name}!$D$2:$D$1002, 1)'
-                    cell_n = sheet1.cell(row=row, column=14)  # Column 6 corresponds to 'N' =INDEX('G2'!$A$2:$A$432,'G2 Score'!E3)
-                    cell_n.value = f'=INDEX({sheet2_name}!$D$2:$D$1002, M{row})'
-                    cell_o = sheet1.cell(row=row, column=15)  # Column 7 corresponds to 'O' =INDEX('G2'!$A$2:$A$432,'G2 Score'!E3+1)
-                    cell_o.value = f'=INDEX({sheet2_name}!$D$2:$D$1002, M{row}+1)'
-                    cell_p = sheet1.cell(row=row, column=16)  # Column 8 corresponds to 'P' =INDEX('G2'!$B$2:$B$432,'G2 Score'!E3)
-                    cell_p.value = f'=INDEX({sheet2_name}!$E$2:$E$1002, M{row})'
-                    cell_q = sheet1.cell(row=row, column=17)  # Column 9 corresponds to 'Q' =INDEX('G2'!$B$2:$B$432,'G2 Score'!E3+1)
-                    cell_q.value = f'=INDEX({sheet2_name}!$E$2:$E$1002, M{row}+1)'
-                    cell_r = sheet1.cell(row=row, column=18)  # Column 10 corresponds to 'R' =SLOPE(H3:I3,F3:G3)*(C3-F3)+H3
-                    cell_r.value = f'=SLOPE(P{row}:Q{row}, N{row}:O{row})*(C{row}-N{row})+P{row}'
-                    cell_s = sheet1.cell(row=row, column=19)  # Column 11 corresponds to 'S' =ABS(J3-D3)
-                    cell_s.value = f'=ABS(R{row}-D{row})'
-                    
-                cell_t3 = sheet1.cell(row=3, column=20)  # Column 12 corresponds to 'T' =AVERAGE(K3:K46)
-                cell_t3.value = '=AVERAGE(S3:S52)'
-                cell_t3.font = Font(bold=True)
-                    
-                wb.save(workbook)
-
-            apply_formulas(workbook_path, sheet_Gx_Score, sheet_Gx)     
+            #Calling the function to apply formulas
+            my_functions.apply_formulas(results_file, score_sheet, result_sheet, x_min, x_max, y_min, y_max)
                 
             print ("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
             print ("               Scoring sheet was created!                ")
             print ("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-
-            rename_noise_excel = project_path + '\\' + device + '\\' + 'Amplifier - Transfer Function.xlsx'
-            new_noise_excel = project_path + '\\' + device + '.xlsx'
-            os.rename(rename_noise_excel, new_noise_excel)
-
-            #function that deletes unwated files
-            def delete_extra_files(folder: str, goodfile: str, goodfile2: str) -> None:
-                for entry in os.listdir(folder):
-                    entry_path = os.path.join(folder, entry)
-                    if os.path.isfile(entry_path):
-                        if entry != goodfile and entry != goodfile2:
-                            os.remove(entry_path)
-                        else:
-                            continue
-                    elif os.path.isdir(entry_path):
-                        shutil.rmtree(entry_path)
-
-            folder_path = project_path + '\\' + device
-            goodfile1 = f"{device}.xlsx"
-            goodfile2 = f"{device}_WithScores.xlsx"
-            print(goodfile1, goodfile2)
-            delete_extra_files(folder_path, goodfile1, goodfile2)
-
+            
+            
     def tearDown(self):
         #self.driver.quit()
         pass        
