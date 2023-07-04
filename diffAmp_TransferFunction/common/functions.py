@@ -2,6 +2,7 @@ from datetime import datetime
 import math
 import os
 import openpyxl
+from openpyxl.styles import Font
 
 class functions():  
 
@@ -151,3 +152,79 @@ class functions():
 
         wb.save(workbook)
 
+    #This fuction applies the formulas to create the score for Nimble and LTspice
+    def apply_formulas(self, workbook, sheet1_name, sheet2_name, x_ax_min, x_ax_max, y_ax_min, y_ax_max):
+        wb = openpyxl.load_workbook(workbook)
+
+        sheet1 = wb[sheet1_name]
+        sheet2 = wb[sheet2_name]
+
+        max_row = sheet1.max_row
+        column_C = 'C'
+
+        # Find the last non-empty row in column G
+        for row in range(max_row, 0, -1):
+            if sheet1[f"{column_C}{row}"].value is not None:
+                max_row = row
+                break
+
+        print(f"Max row in column G of sheet2: {max_row}")
+
+        # Iterate through cells E3:E56 and F3:F56 in sheet1 and apply the formulas
+        for row in range(3, max_row+1):
+            cell_e = sheet1.cell(row=row, column=5)
+            cell_e.value = f'=MATCH(C{row}, INDIRECT("\'{sheet2_name}\'!$A$2:$A$432"), 1)'
+            cell_f = sheet1.cell(row=row, column=6)
+            cell_f.value = f'=INDEX(INDIRECT("\'{sheet2_name}\'!$A$2:$A$432"), E{row})'
+            cell_g = sheet1.cell(row=row, column=7)
+            cell_g.value = f'=INDEX(INDIRECT("\'{sheet2_name}\'!$A$2:$A$432"), E{row}+1)'                
+            cell_h = sheet1.cell(row=row, column=8)
+            cell_h.value = f'=INDEX(INDIRECT("\'{sheet2_name}\'!$B$2:$B$432"), E{row})'               
+            cell_i = sheet1.cell(row=row, column=9)
+            cell_i.value = f'=INDEX(INDIRECT("\'{sheet2_name}\'!$B$2:$B$432"), E{row}+1)'              
+            cell_j = sheet1.cell(row=row, column=10)
+            cell_j.value = f'=SLOPE(H{row}:I{row}, F{row}:G{row})*(C{row}-F{row})+H{row}'              
+            cell_k = sheet1.cell(row=row, column=11)
+            cell_k.value = f'=ABS(J{row}-(D{row}))'
+
+        for row in range(3, max_row+1):
+            cell_m = sheet1.cell(row=row, column=13)  # Column 13 corresponds to 'M' =MATCH(C3,'G2'!$A$2:$A$432,1)
+            cell_m.value = f'=MATCH(C{row}, INDIRECT("\'{sheet2_name}\'!$C$2:$C$1002"), 1)'
+            cell_n = sheet1.cell(row=row, column=14)  # Column 14 corresponds to 'N' =INDEX('G2'!$A$2:$A$432,'G2 Score'!E3)
+            cell_n.value = f'=INDEX(INDIRECT("\'{sheet2_name}\'!$C$2:$C$1002"), M{row})'
+            cell_o = sheet1.cell(row=row, column=15)  # Column 15 corresponds to 'O' =INDEX('G2'!$A$2:$A$432,'G2 Score'!E3+1)
+            cell_o.value = f'=INDEX(INDIRECT("\'{sheet2_name}\'!$C$2:$C$1002"), M{row}+1)'      
+            cell_p = sheet1.cell(row=row, column=16)  # Column 16 corresponds to 'P' =INDEX('G2'!$B$2:$B$432,'G2 Score'!E3)
+            cell_p.value = f'=INDEX(INDIRECT("\'{sheet2_name}\'!$D$2:$D$1001"), M{row})'   
+            cell_q = sheet1.cell(row=row, column=17)  # Column 17 corresponds to 'Q' =INDEX('G2'!$B$2:$B$432,'G2 Score'!E3+1)
+            cell_q.value = f'=INDEX(INDIRECT("\'{sheet2_name}\'!$D$2:$D$1001"), M{row}+1)'   
+            cell_r = sheet1.cell(row=row, column=18)  # Column 18 corresponds to 'R' =SLOPE(H3:I3,F3:G3)*(C3-F3)+H3
+            cell_r.value = f'=SLOPE(P{row}:Q{row}, N{row}:O{row})*(C{row}-N{row})+P{row}'    
+            cell_s = sheet1.cell(row=row, column=19)  # Column 19 corresponds to 'S' =ABS(J3-D3)
+            cell_s.value = f'=ABS(R{row}-(D{row}))'
+            
+        #This function will determine valid data in range, on which scoring will be applied
+        x_range = [float(x_ax_min), float(x_ax_max)] 
+        y_range = [float(y_ax_min), float(y_ax_max)]     
+
+        valid_rows = []
+        for row in sheet1.iter_rows(min_row=3):
+            if row[2].value is not None and row[3].value is not None and x_range[0] <= row[2].value <= x_range[1] and y_range[0] <= row[3].value <= y_range[1]:
+                valid_rows.append(row[0].row)
+                
+        valid_rows_range_l = "K" + str(min(valid_rows)) + ":K" + str(max(valid_rows))
+        print(valid_rows_range_l)
+
+        valid_rows_range_t = "S" + str(min(valid_rows)) + ":S" + str(max(valid_rows))
+        print(valid_rows_range_t)
+
+        cell_l3 = sheet1.cell(row=3, column=12)  # Column 12 corresponds to 'L'
+        cell_l3.value = f'=AVERAGE({valid_rows_range_l})'
+        cell_l3.font = Font(bold=True)
+
+        cell_t3 = sheet1.cell(row=3, column=20)  # Column 20 corresponds to 'T'
+        cell_t3.value = f'=AVERAGE({valid_rows_range_t})'
+        cell_t3.font = Font(bold=True)
+
+        wb.save(workbook)
+        
