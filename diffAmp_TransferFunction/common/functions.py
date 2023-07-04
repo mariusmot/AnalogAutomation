@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 import math
 import os
 import openpyxl
@@ -40,10 +40,10 @@ class functions():
         wb2.save(excel_file_2)
     
     def get_formatted_current_date(self):
-        today = date.today()
-        day = str(today.day)
-        current_date = today.strftime(f"%B {day}, %Y")
-        return current_date
+        now = datetime.now()
+        day = str(now.day)
+        date = now.strftime(f"%B {day}, %Y")
+        return date
     
     def value_to_position(self, value, limitmin, limitmax):
         minpos = 1
@@ -103,4 +103,51 @@ class functions():
         # # Call the function with appropriate arguments
         # copy_ranges_within_excel(workbook_path, 'Datasheet', gain_sheet_score, 5, 6, 3, 4, offset_source_sheet=1, offset_target_sheet=2)
 
+    def get_min_and_max_range_values(self, file, sheet):
+        wb2 = openpyxl.load_workbook(file)
+        ws2 = wb2[sheet]
+        max_row = ws2.max_row
+        # Find the last non-empty value in column 5
+        for i in range(max_row, 1, -1):
+            cell_value_5 = ws2.cell(row=i, column=5).value
+            if cell_value_5 is not None and cell_value_5 != '':
+                last_value_col_5 = cell_value_5
+                break
+        else:
+            last_value_col_5 = None
+        # Find the last non-empty value in column 6
+        for i in range(max_row, 1, -1):
+            cell_value_6 = ws2.cell(row=i, column=6).value
+            if cell_value_6 is not None and cell_value_6 != '':
+                last_value_col_6 = cell_value_6
+                break
+        else:
+            last_value_col_6 = None
+        # Retrieve the first value in column 5
+        first_value_col_5 = ws2.cell(row=2, column=5).value
+        # Retrieve the first value in column 6
+        first_value_col_6 = ws2.cell(row=2, column=6).value
+
+        return first_value_col_5, last_value_col_5, first_value_col_6, last_value_col_6
     
+    #This functions moves datasheet from a sheet to another in the same excel file            
+    def copy_ranges_within_excel(self, workbook, source_sheet, target_sheet, source_col1, source_col2, target_col1, target_col2, offset_source_sheet, offset_target_sheet):
+        wb = openpyxl.load_workbook(workbook)
+        ws_source = wb[source_sheet]
+        ws_target = wb[target_sheet]
+
+        max_row = ws_source.max_row
+
+        for row in range(1 + offset_source_sheet, max_row + 1):
+            # Copy data from source_col1
+            cell_value = ws_source.cell(row=row, column=source_col1).value
+            if cell_value is not None:
+                ws_target.cell(row=row+offset_target_sheet-offset_source_sheet, column=target_col1).value = cell_value
+
+            # Copy data from source_col2
+            cell_value = ws_source.cell(row=row, column=source_col2).value
+            if cell_value is not None:
+                ws_target.cell(row=row+offset_target_sheet-offset_source_sheet, column=target_col2).value = cell_value
+
+        wb.save(workbook)
+
